@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYSTEM DEFENSE // V4.0 ULTIMATE</title>
+    <title>SYSTEM DEFENSE // V4.1 BALANCED</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
@@ -220,7 +220,7 @@
     <div id="start-screen" class="screen">
         <h1>SYSTEM DEFENSE</h1>
         <p>
-            V4.0 ULTIMATE UPDATE<br>
+            V4.1 UPDATE<br>
             Protégez le noyau contre l'intrusion massive.
         </p>
 
@@ -263,13 +263,14 @@
         // --- AUDIO ENGINE ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let droneOsc, lfoOsc, droneGain;
+        let bossMusicInterval; // Pour le beat du boss
         
         const Sounds = {
             type: () => playTone(800, 'square', 0.05, 0.05),
             lock: () => playTone(1200, 'sine', 0.1, 0.05),
             scan: () => { playTone(2000, 'sawtooth', 0.1, 0.1); playTone(1800, 'sawtooth', 0.1, 0.1, 0.1); },
             emp: () => { playNoise(1.0); playTone(100, 'sawtooth', 1.0, 0.5); },
-            explosion: () => playNoise(0.2), // Added missing function
+            explosion: () => playNoise(0.2), 
             bossHit: () => { playTone(150, 'sawtooth', 0.1, 0.2); playNoise(0.1); },
             bossDie: () => { playTone(100, 'sawtooth', 1.0, 0.5); playNoise(1.0); },
             freeze: () => { playTone(400, 'sine', 0.1, 0.1); setTimeout(() => playTone(300, 'sine', 0.3, 0.1), 100); },
@@ -277,6 +278,8 @@
             error: () => playTone(150, 'sawtooth', 0.1, 0.1),
             damage: () => playTone(100, 'sawtooth', 0.4, 0.3),
             start: () => { playTone(400, 'sine', 0.1, 0.1); setTimeout(() => playTone(1000, 'square', 0.4, 0.1), 200); },
+            
+            // --- MUSIQUE D'AMBIANCE ---
             startDrone: () => {
                 if(droneOsc) return;
                 droneOsc = audioCtx.createOscillator();
@@ -302,6 +305,34 @@
             },
             stopDrone: () => {
                 if (droneOsc) { droneOsc.stop(); lfoOsc.stop(); droneOsc = null; }
+            },
+
+            // --- MUSIQUE DE BOSS ---
+            startBossMusic: () => {
+                Sounds.stopDrone(); // Arrête l'ambiance calme
+                if (bossMusicInterval) return;
+                
+                let beatTick = 0;
+                bossMusicInterval = setInterval(() => {
+                    // Kick Drum (tous les temps)
+                    if (beatTick % 4 === 0) playTone(60, 'square', 0.1, 0.3);
+                    
+                    // Hi-hat (contre-temps)
+                    if (beatTick % 2 === 0) playNoise(0.05);
+
+                    // Bassline d'urgence
+                    const note = (beatTick % 8 < 4) ? 100 : 110; 
+                    playTone(note, 'sawtooth', 0.1, 0.15);
+
+                    beatTick++;
+                }, 125); // ~120 BPM (vite)
+            },
+            stopBossMusic: () => {
+                if (bossMusicInterval) {
+                    clearInterval(bossMusicInterval);
+                    bossMusicInterval = null;
+                }
+                Sounds.startDrone(); // Relance l'ambiance calme
             }
         };
 
@@ -403,8 +434,8 @@
         let gameRunning = false;
         let lastTime = 0;
         let spawnTimer = 0;
-        let spawnInterval = 2000;
-        let globalSpeedMultiplier = 1;
+        let spawnInterval = 2500; // AJUSTEMENT: 2000 -> 2500 (Plus lent au début)
+        let globalSpeedMultiplier = 0.8; // AJUSTEMENT: 1.0 -> 0.8 (Plus lent au début)
         let lockedWordIndex = -1;
         let freezeTimer = 0;
         let bossActive = false;
@@ -502,7 +533,7 @@
                 this.text = this.segments[0];
                 this.x = (width / 2) - 100;
                 this.y = -80;
-                this.speed = 0.15;
+                this.speed = 0.15 * globalSpeedMultiplier; // Scale boss speed slightly
                 this.color = '#ff0000';
                 this.glow = '#ff0000';
                 this.isEncrypted = false;
@@ -580,6 +611,7 @@
             startScreen.classList.remove('hidden');
             body.classList.remove('frozen');
             body.classList.remove('boss-active');
+            Sounds.stopBossMusic();
             Sounds.stopDrone();
         }
 
@@ -587,7 +619,8 @@
             activeWords = []; particles = [];
             score = 0; combo = 0; integrity = 100;
             wave = 1; empCharge = 0;
-            spawnInterval = 2000; globalSpeedMultiplier = 1;
+            spawnInterval = 2500; // AJUSTEMENT: 2500 au lieu de 2000
+            globalSpeedMultiplier = 0.8; // AJUSTEMENT: 0.8 au lieu de 1
             lockedWordIndex = -1; freezeTimer = 0;
             bossActive = false; bossSpawnedInWave = false;
             stats = { hits: 0, misses: 0, keystrokes: 0 };
@@ -596,6 +629,7 @@
 
         function gameOver() {
             gameRunning = false;
+            Sounds.stopBossMusic();
             Sounds.stopDrone();
             Sounds.damage();
             
@@ -658,8 +692,9 @@
         function increaseDifficulty() {
             if (score > 0 && score % 10 === 0) {
                 wave++; bossSpawnedInWave = false;
-                globalSpeedMultiplier += 0.1;
-                spawnInterval = Math.max(500, spawnInterval - 100);
+                // AJUSTEMENT: Progression plus douce (0.05 au lieu de 0.1)
+                globalSpeedMultiplier += 0.05; 
+                spawnInterval = Math.max(600, spawnInterval - 50); // -50ms au lieu de -100ms
             }
         }
 
@@ -686,6 +721,7 @@
                         // Boss killed by EMP
                         spawnExplosion(word.x+100, word.y, '#f00', 50);
                         bossActive = false; body.classList.remove('boss-active');
+                        Sounds.stopBossMusic(); // STOP MUSIC
                         activeWords.splice(i, 1);
                         score += 50;
                     }
@@ -738,6 +774,7 @@
                     body.classList.add('boss-active');
                     showBonusMessage("WARNING: FIREWALL DETECTED", "#ff0000");
                     Sounds.error();
+                    Sounds.startBossMusic(); // START MUSIC
                 } else if (spawnTimer > (bossActive ? spawnInterval * 2 : spawnInterval)) {
                     if (!bossActive || Math.random() > 0.5) activeWords.push(new Word());
                     spawnTimer = 0;
@@ -805,6 +842,7 @@
                                 Sounds.bossDie(); spawnExplosion(word.x + 100, word.y, '#f00', 50);
                                 showBonusMessage("FIREWALL BREACHED", "#0f0");
                                 score += 50; bossActive = false; body.classList.remove('boss-active');
+                                Sounds.stopBossMusic(); // STOP MUSIC
                                 activeWords.splice(lockedWordIndex, 1); lockedWordIndex = -1;
                             }
                         } else {
