@@ -122,7 +122,7 @@ docker run -it --workdir /home/yoctocker/ -v <le_path_de_voyonsvoir>/meta-mcxiv/
 kas build project.yml
 ```
 
-Là t'en as pour quelques heures en fonction de ta machine, alors va te reposer un bon coup! Je te conseille vivement 32 Go de RAM (Sinon, ajoute de la RAM swap) et 16 coeurs.
+Là t'en as pour quelques heures en fonction de ta machine, alors va te reposer un bon coup! Je te conseille vivement 32 Go de RAM (Sinon, ajoute de la RAM swap) et 16 coeurs. Ah et le build prend environ 70 Go.
 
 ### Flash Raspberry
 
@@ -132,7 +132,6 @@ Sort du container Yoctocker et flash ta superbe carte SD en faisant gaffe de pas
 cd meta-mcxiv/
 bzcat build/tmp/deploy/images/raspberrypi5/core-image-minimal-raspberrypi5.rootfs.wic.bz2 | sudo dd of=/dev/sda bs=4M status=progress conv=fsync
 # Attention au path en fonction du build rp4 ou rp5
-
 ```
 
 Puis insert la carte SD dans ta Raspberri Pi 5.
